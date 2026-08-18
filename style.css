@@ -1,0 +1,229 @@
+:root {
+  --bg: #0f1420;
+  --panel: #161d2e;
+  --panel-alt: #1d2740;
+  --border: #2a3450;
+  --text: #eef1f8;
+  --muted: #9aa4bd;
+  --accent: #4f8cff;
+  --accent-2: #33d17a;
+  --warn: #ffb648;
+  --danger: #ff5d6c;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.site-header {
+  background: linear-gradient(135deg, #16203a, #0f1420);
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.logo span { color: var(--accent); }
+
+.tagline {
+  color: var(--muted);
+  margin: 8px 0 0;
+  font-size: 1rem;
+}
+
+.demo-banner {
+  margin: 14px 0 0;
+  background: rgba(255, 182, 72, 0.12);
+  border: 1px solid rgba(255, 182, 72, 0.4);
+  color: var(--warn);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+.search-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 28px 0;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+select, input[type="text"], input[type="number"] {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tag-option input { accent-color: var(--accent); }
+.tag-option.checked {
+  border-color: var(--accent);
+  background: rgba(79, 140, 255, 0.15);
+}
+
+.btn-search {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.btn-search:hover { background: #3d78e8; }
+.btn-search:active { transform: scale(0.99); }
+
+.results { margin: 24px 0 60px; }
+
+.hint { color: var(--muted); }
+
+.results-summary {
+  color: var(--muted);
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.product-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.product-card.best-pick {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2);
+}
+
+.product-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.product-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.product-tags {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge.best { background: rgba(51, 209, 122, 0.18); color: var(--accent-2); }
+.badge.over-budget { background: rgba(255, 93, 108, 0.18); color: var(--danger); }
+
+.verdict {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.offers {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.offer-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--panel-alt);
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+.offer-row.top-offer {
+  outline: 1px solid var(--accent);
+}
+
+.offer-vendor { font-weight: 600; }
+.offer-vendor .vendor-type {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.offer-price { font-weight: 700; }
+
+.stars { color: var(--warn); letter-spacing: 1px; }
+.reviews { color: var(--muted); font-size: 0.78rem; }
+
+.trust-low { color: var(--danger); font-size: 0.78rem; }
+.trust-ok { color: var(--accent-2); font-size: 0.78rem; }
+
+@media (max-width: 640px) {
+  .offer-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
