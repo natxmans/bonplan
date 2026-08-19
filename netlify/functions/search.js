@@ -64,11 +64,18 @@ exports.handler = async (event) => {
   url.searchParams.set("pageSize", "20");
 
   try {
-    const res = await fetch(url.toString());
+    const res = await fetch(url.toString(), {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; BonPlanBot/1.0; +https://bonplan.netlify.app)",
+        Accept: "application/json",
+      },
+    });
     if (!res.ok) {
+      const bodyText = await res.text().catch(() => "");
+      console.error("CheapShark non-OK response:", res.status, bodyText.slice(0, 300));
       return {
         statusCode: res.status,
-        body: JSON.stringify({ error: "Erreur lors de la recherche CheapShark." }),
+        body: JSON.stringify({ error: `Erreur CheapShark (HTTP ${res.status}).` }),
       };
     }
     const deals = await res.json();
