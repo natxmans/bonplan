@@ -96,9 +96,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ query: title, results }),
     };
   } catch (err) {
+    console.error("CheapShark fetch failed:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Impossible de contacter CheapShark." }),
+      body: JSON.stringify({ error: `Impossible de contacter CheapShark : ${err.message}` }),
     };
   }
 };
