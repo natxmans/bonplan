@@ -3,6 +3,8 @@ const tagsContainer = document.getElementById("tags");
 const form = document.getElementById("search-form");
 const resultsEl = document.getElementById("results");
 
+const AVATAR_PALETTE = ["#6d8dff", "#9d6dff", "#34d399", "#fbbf24", "#fb7185", "#22c1dc", "#f97362"];
+
 function initCategories() {
   Object.entries(CATEGORIES).forEach(([key, cat]) => {
     const opt = document.createElement("option");
@@ -31,11 +33,40 @@ function renderTags(categoryKey) {
 
 categorySelect.addEventListener("change", () => renderTags(categorySelect.value));
 
+function avatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function showSkeleton() {
+  resultsEl.innerHTML = "";
+  for (let i = 0; i < 3; i++) {
+    const card = document.createElement("div");
+    card.className = "skeleton-card";
+    card.innerHTML = `
+      <div class="skeleton-line w-60"></div>
+      <div class="skeleton-line w-30"></div>
+      <div class="skeleton-line w-90"></div>
+    `;
+    resultsEl.appendChild(card);
+  }
+}
+
+function showMessage(icon, text) {
+  resultsEl.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">${icon}</div>
+      <p>${text}</p>
+    </div>
+  `;
+}
+
 function renderResults(results, { budget }) {
   resultsEl.innerHTML = "";
 
   if (results.length === 0) {
-    resultsEl.innerHTML = `<p class="hint">Aucun résultat. Essaie un mot-clé différent ou moins de filtres.</p>`;
+    showMessage("🔍", "Aucun résultat. Essaie un mot-clé différent ou moins de filtres.");
     return;
   }
 
@@ -52,7 +83,7 @@ function renderResults(results, { budget }) {
 
   const summary = document.createElement("p");
   summary.className = "results-summary";
-  summary.textContent = `${ranked.length} résultat(s) trouvé(s) sur le web. Triés par prix détecté (le moins cher parmi les sites reconnus en premier).`;
+  summary.innerHTML = `<span>✨</span> ${ranked.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`;
   resultsEl.appendChild(summary);
 
   ranked.forEach((r, i) => {
@@ -72,6 +103,15 @@ function renderResults(results, { budget }) {
 
     const overBudget = budget != null && r.price != null && r.price > budget;
 
+    const avatar = document.createElement("div");
+    avatar.className = "product-avatar";
+    avatar.style.background = avatarColor(r.displayLink || r.title);
+    avatar.textContent = (r.displayLink || "?").trim().charAt(0).toUpperCase();
+    card.appendChild(avatar);
+
+    const body = document.createElement("div");
+    body.className = "product-body";
+
     const head = document.createElement("div");
     head.className = "product-head";
     head.innerHTML = `
@@ -80,30 +120,32 @@ function renderResults(results, { budget }) {
         <div class="product-tags">${r.displayLink}</div>
       </div>
       <div>
-        ${i === bestIndex ? '<span class="badge best">Meilleur plan détecté</span>' : ""}
+        ${i === bestIndex ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
         ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
       </div>
     `;
     head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
-    card.appendChild(head);
+    body.appendChild(head);
 
     const currency = r.currency || "€";
     const verdict = document.createElement("p");
-    verdict.className = "verdict";
     if (r.price != null) {
-      verdict.textContent = r.trustworthy
-        ? `✅ ${r.price.toFixed(2)} ${currency} — boutique reconnue.`
-        : `⚠️ ${r.price.toFixed(2)} ${currency} détecté, mais boutique peu connue : vérifie sa fiabilité avant d'acheter.`;
+      verdict.className = "verdict " + (r.trustworthy ? "trusted" : "unknown");
+      verdict.innerHTML = r.trustworthy
+        ? `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique reconnue</span>`
+        : `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique peu connue, à vérifier</span>`;
     } else {
-      verdict.textContent = "ℹ️ Prix non détecté automatiquement — consulte la page pour voir le tarif.";
+      verdict.className = "verdict";
+      verdict.innerHTML = `<span class="verdict-note">ℹ️ Prix non détecté — consulte la page pour voir le tarif.</span>`;
     }
-    card.appendChild(verdict);
+    body.appendChild(verdict);
 
     const snippet = document.createElement("p");
     snippet.className = "snippet";
     snippet.textContent = r.snippet || "";
-    card.appendChild(snippet);
+    body.appendChild(snippet);
 
+    card.appendChild(body);
     resultsEl.appendChild(card);
   });
 }
@@ -116,7 +158,7 @@ form.addEventListener("submit", async (e) => {
   const budget = budgetRaw === "" ? null : Number(budgetRaw);
   const tags = Array.from(tagsContainer.querySelectorAll("input:checked")).map((cb) => cb.value);
 
-  resultsEl.innerHTML = `<p class="hint">Recherche en cours sur internet...</p>`;
+  showSkeleton();
 
   const params = new URLSearchParams({ category, keyword, tags: tags.join(","), budget: budget ?? "" });
 
@@ -125,18 +167,18 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      resultsEl.innerHTML = `<p class="hint">❌ ${data.error || "Erreur pendant la recherche."}</p>`;
+      showMessage("❌", data.error || "Erreur pendant la recherche.");
       return;
     }
 
     if (data.note) {
-      resultsEl.innerHTML = `<p class="hint">ℹ️ ${data.note}</p>`;
+      showMessage("ℹ️", data.note);
       return;
     }
 
     renderResults(data.results, { budget });
   } catch (err) {
-    resultsEl.innerHTML = `<p class="hint">❌ Impossible de joindre la recherche. Vérifie ta connexion et réessaie.</p>`;
+    showMessage("❌", "Impossible de joindre la recherche. Vérifie ta connexion et réessaie.");
   }
 });
 

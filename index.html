@@ -4,14 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BonPlan — Trouve le meilleur prix fiable</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8E%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
   <header class="site-header">
     <div class="wrap">
-      <div class="logo">🔎 <span>BonPlan</span></div>
-      <p class="tagline">Donne ton budget et tes goûts, on trouve le meilleur rapport prix / fiabilité.</p>
-      <p class="demo-banner">⚠️ Vraie recherche de prix disponible pour les Jeux vidéo uniquement (via CheapShark). Livres et consoles n'ont pas encore d'équivalent gratuit sans carte bancaire.</p>
+      <div class="logo"><span class="logo-mark">🔎</span><span class="logo-text">BonPlan</span></div>
+      <h1 class="tagline">Donne ton budget et tes goûts,<br />on trouve le meilleur plan.</h1>
+      <p class="demo-banner">
+        <span class="demo-banner-icon">⚡</span>
+        <span>Vraie recherche de prix en direct pour les <strong>Jeux vidéo</strong> (via CheapShark). Livres et consoles arrivent bientôt.</span>
+      </p>
     </div>
   </header>
 
@@ -19,37 +28,48 @@
     <section class="search-panel">
       <form id="search-form">
         <div class="field">
-          <label for="category">Catégorie</label>
-          <select id="category" name="category" required></select>
+          <label for="category"><span class="field-icon">🎯</span>Catégorie</label>
+          <div class="select-wrap">
+            <select id="category" name="category" required></select>
+          </div>
         </div>
 
         <div class="field">
-          <label for="keyword">Mot-clé (titre, auteur, franchise...)</label>
+          <label for="keyword"><span class="field-icon">🔎</span>Mot-clé (titre, auteur, franchise...)</label>
           <input type="text" id="keyword" name="keyword" placeholder="ex : fantasy, RPG, Zelda..." />
         </div>
 
         <div class="field">
-          <label>Tes goûts (optionnel)</label>
+          <label><span class="field-icon">❤️</span>Tes goûts (optionnel)</label>
           <div id="tags" class="tags"></div>
         </div>
 
         <div class="field">
-          <label for="budget">Budget maximum (€)</label>
-          <input type="number" id="budget" name="budget" min="0" step="1" placeholder="ex : 50" />
+          <label for="budget"><span class="field-icon">💶</span>Budget maximum</label>
+          <div class="input-prefix-wrap">
+            <input type="number" id="budget" name="budget" min="0" step="1" placeholder="ex : 50" />
+            <span class="input-suffix">€</span>
+          </div>
         </div>
 
-        <button type="submit" class="btn-search">Chercher le meilleur plan</button>
+        <button type="submit" class="btn-search">
+          <span>Chercher le meilleur plan</span>
+          <span class="btn-arrow">→</span>
+        </button>
       </form>
     </section>
 
     <section id="results" class="results">
-      <p class="hint">Remplis le formulaire puis clique sur « Chercher le meilleur plan ».</p>
+      <div class="empty-state">
+        <div class="empty-state-icon">🧭</div>
+        <p>Remplis le formulaire puis clique sur « Chercher le meilleur plan ».</p>
+      </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="wrap">
-      <p>Recherche propulsée par l'API gratuite CheapShark (jeux vidéo uniquement).</p>
+      <p>Recherche propulsée par l'API gratuite <strong>CheapShark</strong> (jeux vidéo uniquement).</p>
     </div>
   </footer>
 
