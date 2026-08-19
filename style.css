@@ -336,6 +336,12 @@ select {
   font-size: 0.88rem;
 }
 
+.extras-heading {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--border-soft);
+}
+
 /* Skeleton loading state */
 
 .skeleton-card {

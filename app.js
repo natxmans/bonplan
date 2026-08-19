@@ -62,6 +62,86 @@ function showMessage(icon, text) {
   `;
 }
 
+const EXTRA_PATTERN = /soundtrack|\bost\b|artbook|art book|comic\b|bande originale|goodies|art\s*of\s/i;
+
+function isExtra(title) {
+  return EXTRA_PATTERN.test(title);
+}
+
+function rankByPriceAndTrust(items) {
+  return [...items].sort((a, b) => {
+    const aHasPrice = a.price != null;
+    const bHasPrice = b.price != null;
+    if (aHasPrice !== bHasPrice) return aHasPrice ? -1 : 1;
+    if (a.trustworthy !== b.trustworthy) return a.trustworthy ? -1 : 1;
+    if (aHasPrice && bHasPrice) return a.price - b.price;
+    return 0;
+  });
+}
+
+function createCard(r, { isBest, budget }) {
+  const card = document.createElement("article");
+  card.className = "product-card" + (isBest ? " best-pick" : "");
+  card.tabIndex = 0;
+  card.setAttribute("role", "link");
+  card.setAttribute("aria-label", `Ouvrir ${r.title} sur ${r.displayLink}`);
+  const openLink = () => window.open(r.link, "_blank", "noopener,noreferrer");
+  card.addEventListener("click", openLink);
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openLink();
+    }
+  });
+
+  const overBudget = budget != null && r.price != null && r.price > budget;
+
+  const avatar = document.createElement("div");
+  avatar.className = "product-avatar";
+  avatar.style.background = avatarColor(r.displayLink || r.title);
+  avatar.textContent = (r.displayLink || "?").trim().charAt(0).toUpperCase();
+  card.appendChild(avatar);
+
+  const body = document.createElement("div");
+  body.className = "product-body";
+
+  const head = document.createElement("div");
+  head.className = "product-head";
+  head.innerHTML = `
+    <div>
+      <div class="product-title"><a href="${r.link}" target="_blank" rel="noopener noreferrer">${r.title}</a></div>
+      <div class="product-tags">${r.displayLink}</div>
+    </div>
+    <div>
+      ${isBest ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
+      ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
+    </div>
+  `;
+  head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
+  body.appendChild(head);
+
+  const currency = r.currency || "€";
+  const verdict = document.createElement("p");
+  if (r.price != null) {
+    verdict.className = "verdict " + (r.trustworthy ? "trusted" : "unknown");
+    verdict.innerHTML = r.trustworthy
+      ? `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique reconnue</span>`
+      : `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique peu connue, à vérifier</span>`;
+  } else {
+    verdict.className = "verdict";
+    verdict.innerHTML = `<span class="verdict-note">ℹ️ Prix non détecté — consulte la page pour voir le tarif.</span>`;
+  }
+  body.appendChild(verdict);
+
+  const snippet = document.createElement("p");
+  snippet.className = "snippet";
+  snippet.textContent = r.snippet || "";
+  body.appendChild(snippet);
+
+  card.appendChild(body);
+  return card;
+}
+
 function renderResults(results, { budget }) {
   resultsEl.innerHTML = "";
 
@@ -70,84 +150,35 @@ function renderResults(results, { budget }) {
     return;
   }
 
-  const ranked = [...results].sort((a, b) => {
-    const aHasPrice = a.price != null;
-    const bHasPrice = b.price != null;
-    if (aHasPrice !== bHasPrice) return aHasPrice ? -1 : 1;
-    if (a.trustworthy !== b.trustworthy) return a.trustworthy ? -1 : 1;
-    if (aHasPrice && bHasPrice) return a.price - b.price;
-    return 0;
-  });
+  const mainResults = results.filter((r) => !isExtra(r.title));
+  const extras = results.filter((r) => isExtra(r.title));
 
-  const bestIndex = ranked.findIndex((r) => r.price != null);
+  const rankedMain = rankByPriceAndTrust(mainResults);
+  const bestIndex = rankedMain.findIndex((r) => r.price != null);
 
   const summary = document.createElement("p");
   summary.className = "results-summary";
-  summary.innerHTML = `<span>✨</span> ${ranked.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`;
+  summary.innerHTML = `<span>✨</span> ${rankedMain.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`;
   resultsEl.appendChild(summary);
 
-  ranked.forEach((r, i) => {
-    const card = document.createElement("article");
-    card.className = "product-card" + (i === bestIndex ? " best-pick" : "");
-    card.tabIndex = 0;
-    card.setAttribute("role", "link");
-    card.setAttribute("aria-label", `Ouvrir ${r.title} sur ${r.displayLink}`);
-    const openLink = () => window.open(r.link, "_blank", "noopener,noreferrer");
-    card.addEventListener("click", openLink);
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openLink();
-      }
+  if (rankedMain.length === 0) {
+    showMessage("🔍", "Seules des bandes originales / extras ont été trouvés pour ce mot-clé, pas le jeu lui-même.");
+  } else {
+    rankedMain.forEach((r, i) => {
+      resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget }));
     });
+  }
 
-    const overBudget = budget != null && r.price != null && r.price > budget;
+  if (extras.length > 0) {
+    const extrasHeading = document.createElement("p");
+    extrasHeading.className = "results-summary extras-heading";
+    extrasHeading.innerHTML = `<span>🎵</span> Bandes originales & extras (hors du jeu lui-même)`;
+    resultsEl.appendChild(extrasHeading);
 
-    const avatar = document.createElement("div");
-    avatar.className = "product-avatar";
-    avatar.style.background = avatarColor(r.displayLink || r.title);
-    avatar.textContent = (r.displayLink || "?").trim().charAt(0).toUpperCase();
-    card.appendChild(avatar);
-
-    const body = document.createElement("div");
-    body.className = "product-body";
-
-    const head = document.createElement("div");
-    head.className = "product-head";
-    head.innerHTML = `
-      <div>
-        <div class="product-title"><a href="${r.link}" target="_blank" rel="noopener noreferrer">${r.title}</a></div>
-        <div class="product-tags">${r.displayLink}</div>
-      </div>
-      <div>
-        ${i === bestIndex ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
-        ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
-      </div>
-    `;
-    head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
-    body.appendChild(head);
-
-    const currency = r.currency || "€";
-    const verdict = document.createElement("p");
-    if (r.price != null) {
-      verdict.className = "verdict " + (r.trustworthy ? "trusted" : "unknown");
-      verdict.innerHTML = r.trustworthy
-        ? `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique reconnue</span>`
-        : `<span class="price">${r.price.toFixed(2)} ${currency}</span><span class="verdict-note">boutique peu connue, à vérifier</span>`;
-    } else {
-      verdict.className = "verdict";
-      verdict.innerHTML = `<span class="verdict-note">ℹ️ Prix non détecté — consulte la page pour voir le tarif.</span>`;
-    }
-    body.appendChild(verdict);
-
-    const snippet = document.createElement("p");
-    snippet.className = "snippet";
-    snippet.textContent = r.snippet || "";
-    body.appendChild(snippet);
-
-    card.appendChild(body);
-    resultsEl.appendChild(card);
-  });
+    rankByPriceAndTrust(extras).forEach((r) => {
+      resultsEl.appendChild(createCard(r, { isBest: false, budget }));
+    });
+  }
 }
 
 form.addEventListener("submit", async (e) => {
