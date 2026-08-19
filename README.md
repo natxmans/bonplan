@@ -1,39 +1,16 @@
 # BonPlan
 
 Site qui prend un budget, des goûts (catégorie, mots-clés, tags) et fait une
-**vraie recherche sur internet** via l'API gratuite Google Custom Search,
-puis affiche les résultats triés par prix détecté (le moins cher parmi les
-sites marchands reconnus en premier).
+recherche de prix réels. Actuellement, seule la catégorie **Jeux vidéo**
+a une vraie recherche : via l'API gratuite **CheapShark**, qui compare les
+prix sur Steam, GOG, Epic Games Store, Humble Store, etc. — sans clé API,
+sans compte, sans carte bancaire.
+
+Livres et consoles n'ont pas encore d'équivalent gratuit sans carte
+bancaire (voir "Aller plus loin" ci-dessous).
 
 La recherche se fait côté serveur dans une fonction Netlify
-(`netlify/functions/search.js`) pour que la clé API ne soit jamais exposée
-dans le navigateur.
-
-## 1. Obtenir la clé API Google (gratuite, 100 requêtes/jour)
-
-1. Va sur [console.cloud.google.com](https://console.cloud.google.com/) et
-   crée un projet (gratuit, pas de carte bancaire nécessaire pour ce quota).
-2. Dans "API et services" → "Bibliothèque", active **"Custom Search API"**.
-3. Dans "API et services" → "Identifiants", crée une **clé API**. C'est ta
-   valeur `GOOGLE_SEARCH_API_KEY`.
-4. Va sur [programmablesearchengine.google.com](https://programmablesearchengine.google.com/controlpanel/create),
-   crée un moteur de recherche qui cherche sur **tout le web** (pas un site
-   précis). Récupère son **ID du moteur de recherche** (cx). C'est ta valeur
-   `GOOGLE_SEARCH_CX`.
-
-## 2. Configurer les clés sur Netlify
-
-Sur [app.netlify.com](https://app.netlify.com) → ton site `bonplan` →
-**Project configuration** → **Environment variables** → ajoute :
-
-- `GOOGLE_SEARCH_API_KEY` = ta clé API
-- `GOOGLE_SEARCH_CX` = ton ID de moteur de recherche
-
-Puis redéploie le site (Deploys → Trigger deploy) pour que les fonctions
-prennent en compte les nouvelles variables.
-
-⚠️ Ne mets jamais ces valeurs dans le code ou sur GitHub — uniquement dans
-les variables d'environnement Netlify.
+(`netlify/functions/search.js`).
 
 ## Lancer en local (avec la recherche fonctionnelle)
 
@@ -45,12 +22,8 @@ npm install -g netlify-cli
 netlify dev
 ```
 
-Crée un fichier `.env` local (non commité) avec :
-
-```
-GOOGLE_SEARCH_API_KEY=ta_clé
-GOOGLE_SEARCH_CX=ton_cx
-```
+Aucune clé API n'est nécessaire pour CheapShark : la recherche jeux vidéo
+fonctionne directement, en local comme en production.
 
 ## Déploiement
 
@@ -59,10 +32,29 @@ connecté à Netlify via GitHub).
 
 ## Limites connues
 
-- Quota Google gratuit : 100 requêtes/jour. Au-delà, la recherche échoue
-  jusqu'au lendemain (ou passage à un plan payant).
-- Le prix est **détecté par une expression régulière** dans les résultats
-  Google (titre/description) : il peut être absent, faux, ou obsolète.
-  Toujours vérifier sur le site avant d'acheter.
-- La "fiabilité" est une simple liste de sites marchands connus
-  (`netlify/functions/search.js`), pas une vraie note de confiance.
+- Recherche réelle limitée à la catégorie **Jeux vidéo** pour l'instant.
+- Les prix CheapShark sont en **dollars ($)**, pas en euros (l'API ne
+  propose pas de conversion).
+- La "fiabilité" est une simple liste de boutiques connues
+  (`TRUSTED_STORE_IDS` dans `netlify/functions/search.js`), pas une vraie
+  note de confiance.
+
+## Aller plus loin : livres et consoles
+
+Pour une vraie recherche sur ces catégories, l'option la plus complète est
+l'API **Google Custom Search** (recherche web générale, 100 requêtes/jour
+gratuites). Mais Google exige d'associer une carte bancaire au projet
+Google Cloud pour activer cette API, même si l'usage reste gratuit sous le
+quota. Si tu veux franchir cette étape un jour :
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → active
+   "Custom Search API" → associe une carte bancaire (Facturation).
+2. Crée une clé API dans "Identifiants".
+3. Crée un moteur sur [programmablesearchengine.google.com](https://programmablesearchengine.google.com/controlpanel/create)
+   (laisser "sites à rechercher" vide = recherche tout le web), récupère
+   son ID (cx).
+4. Ajoute `GOOGLE_SEARCH_API_KEY` et `GOOGLE_SEARCH_CX` dans les variables
+   d'environnement Netlify, jamais dans le code.
+
+⚠️ Ne mets jamais de clé API dans le code ou sur GitHub — uniquement dans
+les variables d'environnement Netlify.

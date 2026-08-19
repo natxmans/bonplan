@@ -87,12 +87,13 @@ function renderResults(results, { budget }) {
     head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
     card.appendChild(head);
 
+    const currency = r.currency || "€";
     const verdict = document.createElement("p");
     verdict.className = "verdict";
     if (r.price != null) {
       verdict.textContent = r.trustworthy
-        ? `✅ ${r.price.toFixed(2)} € — site marchand reconnu.`
-        : `⚠️ ${r.price.toFixed(2)} € détecté, mais site peu connu : vérifie sa fiabilité avant d'acheter.`;
+        ? `✅ ${r.price.toFixed(2)} ${currency} — boutique reconnue.`
+        : `⚠️ ${r.price.toFixed(2)} ${currency} détecté, mais boutique peu connue : vérifie sa fiabilité avant d'acheter.`;
     } else {
       verdict.textContent = "ℹ️ Prix non détecté automatiquement — consulte la page pour voir le tarif.";
     }
@@ -125,6 +126,11 @@ form.addEventListener("submit", async (e) => {
 
     if (!res.ok) {
       resultsEl.innerHTML = `<p class="hint">❌ ${data.error || "Erreur pendant la recherche."}</p>`;
+      return;
+    }
+
+    if (data.note) {
+      resultsEl.innerHTML = `<p class="hint">ℹ️ ${data.note}</p>`;
       return;
     }
 

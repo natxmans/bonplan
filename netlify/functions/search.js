@@ -1,110 +1,104 @@
-// Fonction serverless Netlify : fait une vraie recherche web via l'API
-// Google Custom Search (gratuite jusqu'à 100 requêtes/jour) et renvoie une
-// liste de résultats avec prix détecté (si trouvé) et fiabilité estimée du
-// site marchand. La clé API et l'ID du moteur de recherche restent côté
-// serveur (variables d'environnement Netlify), jamais exposés au navigateur.
+// Fonction serverless Netlify : vraie recherche de prix pour les jeux vidéo
+// via l'API gratuite CheapShark (aucune clé, aucun compte, aucune carte
+// bancaire nécessaire). Compare les prix réels sur Steam, GOG, Epic, etc.
+//
+// Livres et consoles n'ont pas d'équivalent gratuit sans carte bancaire
+// pour l'instant (Google Custom Search en aurait un, mais Google exige un
+// compte de facturation même sous le quota gratuit) — voir README.
 
-const KNOWN_VENDORS = [
-  "fnac.com",
-  "cultura.com",
-  "decitre.fr",
-  "leslibraires.fr",
-  "amazon.fr",
-  "cdiscount.com",
-  "micromania.fr",
-  "boulanger.com",
-  "darty.com",
-  "rakuten.com",
-  "steampowered.com",
-  "instant-gaming.com",
-];
-
-const CATEGORY_HINTS = {
-  livres: "livre acheter",
-  jeux: "jeu vidéo acheter",
-  consoles: "console acheter",
+const STORE_NAMES = {
+  1: "Steam",
+  7: "GOG",
+  8: "Origin (EA)",
+  11: "Humble Store",
+  13: "Uplay (Ubisoft)",
+  15: "Fanatical",
+  23: "GameBillet",
+  25: "Epic Games Store",
+  27: "Gamesplanet",
+  30: "IndieGala",
+  31: "Blizzard Shop",
+  33: "DLGamer",
 };
 
-function extractPrice(text) {
-  if (!text) return null;
-  const match = text.match(/(\d{1,4}(?:[.,]\d{2})?)\s?€/);
-  if (!match) return null;
-  return parseFloat(match[1].replace(",", "."));
-}
-
-function isKnownVendor(link) {
-  try {
-    const host = new URL(link).hostname.replace(/^www\./, "");
-    return KNOWN_VENDORS.some((v) => host.includes(v));
-  } catch {
-    return false;
-  }
-}
+// Boutiques considérées fiables par défaut (éditeurs officiels ou
+// revendeurs autorisés bien établis). Les autres sont marquées "à vérifier".
+const TRUSTED_STORE_IDS = new Set([1, 7, 8, 11, 13, 15, 25, 27, 31]);
 
 exports.handler = async (event) => {
-  const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-  const cx = process.env.GOOGLE_SEARCH_CX;
+  const params = event.queryStringParameters || {};
+  const category = params.category || "";
+  const keyword = (params.keyword || "").trim();
+  const tags = (params.tags || "").split(",").filter(Boolean);
+  const budget = params.budget ? Number(params.budget) : null;
 
-  if (!apiKey || !cx) {
+  if (category !== "jeux") {
     return {
-      statusCode: 500,
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        error:
-          "Clés API non configurées. Ajoute GOOGLE_SEARCH_API_KEY et GOOGLE_SEARCH_CX dans les variables d'environnement Netlify, puis redéploie.",
+        query: "",
+        results: [],
+        note:
+          "La vraie recherche n'est disponible que pour les Jeux vidéo pour l'instant (API gratuite sans carte bancaire : CheapShark). Livres et consoles n'ont pas encore d'équivalent gratuit sans carte.",
       }),
     };
   }
 
-  const params = event.queryStringParameters || {};
-  const category = params.category || "";
-  const keyword = params.keyword || "";
-  const tags = (params.tags || "").split(",").filter(Boolean);
-  const budget = params.budget ? Number(params.budget) : null;
+  const title = keyword || tags[0] || "";
+  if (!title) {
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: "",
+        results: [],
+        note: "Ajoute un mot-clé (le nom du jeu, ex : Zelda) pour lancer la recherche.",
+      }),
+    };
+  }
 
-  const queryParts = [keyword, ...tags, CATEGORY_HINTS[category] || "", "prix"].filter(Boolean);
-  const q = queryParts.join(" ");
-
-  const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("cx", cx);
-  url.searchParams.set("q", q);
-  url.searchParams.set("num", "10");
-  url.searchParams.set("gl", "fr");
-  url.searchParams.set("hl", "fr");
+  const url = new URL("https://www.cheapshark.com/api/1.0/deals");
+  url.searchParams.set("title", title);
+  url.searchParams.set("sortBy", "Price");
+  url.searchParams.set("pageSize", "20");
 
   try {
     const res = await fetch(url.toString());
-    const data = await res.json();
-
     if (!res.ok) {
       return {
         statusCode: res.status,
-        body: JSON.stringify({ error: data.error?.message || "Erreur lors de la recherche." }),
+        body: JSON.stringify({ error: "Erreur lors de la recherche CheapShark." }),
       };
     }
+    const deals = await res.json();
 
-    const items = (data.items || []).map((item) => {
-      const price = extractPrice(item.title) ?? extractPrice(item.snippet);
+    const results = deals.map((d) => {
+      const price = parseFloat(d.salePrice);
+      const storeId = Number(d.storeID);
       return {
-        title: item.title,
-        link: item.link,
-        snippet: item.snippet,
-        displayLink: item.displayLink,
+        title: d.title,
+        link: `https://www.cheapshark.com/redirect?dealID=${d.dealID}`,
+        snippet: `Prix normal ${parseFloat(d.normalPrice).toFixed(2)} $ — économie ${Math.round(
+          parseFloat(d.savings) || 0
+        )}%`,
+        displayLink: STORE_NAMES[storeId] || `Boutique #${storeId}`,
         price,
-        trustworthy: isKnownVendor(item.link),
-        withinBudget: budget == null || price == null ? null : price <= budget,
+        currency: "$",
+        trustworthy: TRUSTED_STORE_IDS.has(storeId),
+        withinBudget: budget == null ? null : price <= budget,
       };
     });
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: q, results: items }),
+      body: JSON.stringify({ query: title, results }),
     };
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Impossible de contacter le moteur de recherche." }),
+      body: JSON.stringify({ error: "Impossible de contacter CheapShark." }),
     };
   }
 };
