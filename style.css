@@ -142,6 +142,17 @@ select, input[type="text"], input[type="number"] {
   border-radius: var(--radius);
   padding: 18px 20px;
   margin-bottom: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.product-card:hover,
+.product-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.product-card:active {
+  transform: scale(0.996);
 }
 
 .product-card.best-pick {

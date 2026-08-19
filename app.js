@@ -58,6 +58,17 @@ function renderResults(results, { budget }) {
   ranked.forEach((r, i) => {
     const card = document.createElement("article");
     card.className = "product-card" + (i === bestIndex ? " best-pick" : "");
+    card.tabIndex = 0;
+    card.setAttribute("role", "link");
+    card.setAttribute("aria-label", `Ouvrir ${r.title} sur ${r.displayLink}`);
+    const openLink = () => window.open(r.link, "_blank", "noopener,noreferrer");
+    card.addEventListener("click", openLink);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLink();
+      }
+    });
 
     const overBudget = budget != null && r.price != null && r.price > budget;
 
@@ -73,6 +84,7 @@ function renderResults(results, { budget }) {
         ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
       </div>
     `;
+    head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
     card.appendChild(head);
 
     const verdict = document.createElement("p");
