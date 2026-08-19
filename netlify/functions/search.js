@@ -66,7 +66,7 @@ exports.handler = async (event) => {
   try {
     const res = await fetch(url.toString(), {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; BonPlanBot/1.0; +https://bonplan.netlify.app)",
+        "User-Agent": "BonPlanApp/1.0 (+https://bonplan-carine-nathan-2026x9.netlify.app)",
         Accept: "application/json",
       },
     });
