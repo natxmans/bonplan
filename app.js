@@ -63,9 +63,14 @@ function showMessage(icon, text) {
 }
 
 const EXTRA_PATTERN = /soundtrack|\bost\b|artbook|art book|comic\b|bande originale|goodies|art\s*of\s/i;
+const EXTENSION_PATTERN = /\bdlc\b|expansion|extension|add-?on|content pack|season pass|\bbundle\b|deluxe edition|ultimate edition|complete edition|goty|game of the year/i;
 
 function isExtra(title) {
   return EXTRA_PATTERN.test(title);
+}
+
+function isExtension(title) {
+  return EXTENSION_PATTERN.test(title) && !isExtra(title);
 }
 
 function rankByPriceAndTrust(items) {
@@ -79,7 +84,7 @@ function rankByPriceAndTrust(items) {
   });
 }
 
-function createCard(r, { isBest, budget }) {
+function createCard(r, { isBest, budget, showTypeTag = true }) {
   const card = document.createElement("article");
   card.className = "product-card" + (isBest ? " best-pick" : "");
   card.tabIndex = 0;
@@ -95,6 +100,7 @@ function createCard(r, { isBest, budget }) {
   });
 
   const overBudget = budget != null && r.price != null && r.price > budget;
+  const extension = isExtension(r.title);
 
   const avatar = document.createElement("div");
   avatar.className = "product-avatar";
@@ -110,7 +116,7 @@ function createCard(r, { isBest, budget }) {
   head.innerHTML = `
     <div>
       <div class="product-title"><a href="${r.link}" target="_blank" rel="noopener noreferrer">${r.title}</a></div>
-      <div class="product-tags">${r.displayLink}</div>
+      <div class="product-tags">${r.displayLink}${showTypeTag ? (extension ? ' · <span class="type-tag">🧩 Extension / DLC</span>' : ' · <span class="type-tag base">🎮 Jeu de base</span>') : ""}</div>
     </div>
     <div>
       ${isBest ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
@@ -176,7 +182,7 @@ function renderResults(results, { budget }) {
     resultsEl.appendChild(extrasHeading);
 
     rankByPriceAndTrust(extras).forEach((r) => {
-      resultsEl.appendChild(createCard(r, { isBest: false, budget }));
+      resultsEl.appendChild(createCard(r, { isBest: false, budget, showTypeTag: false }));
     });
   }
 }
