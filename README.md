@@ -1,16 +1,32 @@
 # BonPlan
 
 Site qui prend un budget, des goûts (catégorie, mots-clés, tags) et fait une
-recherche de prix réels. Actuellement, seule la catégorie **Jeux vidéo**
-a une vraie recherche : via l'API gratuite **CheapShark**, qui compare les
-prix sur Steam, GOG, Epic Games Store, Humble Store, etc. — sans clé API,
-sans compte, sans carte bancaire.
+recherche de prix réels :
 
-Livres et consoles n'ont pas encore d'équivalent gratuit sans carte
-bancaire (voir "Aller plus loin" ci-dessous).
+- **Jeux vidéo** : API gratuite **CheapShark** (Steam, GOG, Epic, Humble...)
+  — sans clé, sans compte, sans carte bancaire.
+- **Livres / Consoles** : API **Gemini** (Google AI Studio) avec son outil
+  de recherche Google intégré (grounding) — gratuite, sans carte bancaire,
+  mais nécessite une clé API (voir configuration ci-dessous).
 
 La recherche se fait côté serveur dans une fonction Netlify
-(`netlify/functions/search.js`).
+(`netlify/functions/search.js`), pour ne jamais exposer les clés au
+navigateur.
+
+## Configurer la clé Gemini (gratuite, sans carte)
+
+1. Va sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+   et connecte-toi avec un compte Google.
+2. Clique "Create API key" → choisis ou crée un projet Google Cloud (pas
+   besoin d'associer de carte bancaire pour le quota gratuit de Gemini).
+3. Copie la clé générée.
+4. Sur [app.netlify.com](https://app.netlify.com) → le site `bonplan` →
+   **Project configuration** → **Environment variables** → ajoute :
+   - `GEMINI_API_KEY` = ta clé (coche "Contains secret values")
+5. Redéploie le site (Deploys → Trigger deploy).
+
+⚠️ Ne mets jamais de clé API dans le code ou sur GitHub — uniquement dans
+les variables d'environnement Netlify.
 
 ## Lancer en local (avec la recherche fonctionnelle)
 
@@ -22,8 +38,14 @@ npm install -g netlify-cli
 netlify dev
 ```
 
-Aucune clé API n'est nécessaire pour CheapShark : la recherche jeux vidéo
-fonctionne directement, en local comme en production.
+Crée un fichier `.env` local (non commité, déjà dans `.gitignore`) avec :
+
+```
+GEMINI_API_KEY=ta_clé
+```
+
+CheapShark ne nécessite aucune clé : la recherche jeux vidéo fonctionne
+directement, en local comme en production.
 
 ## Déploiement
 
@@ -32,29 +54,11 @@ connecté à Netlify via GitHub).
 
 ## Limites connues
 
-- Recherche réelle limitée à la catégorie **Jeux vidéo** pour l'instant.
-- Les prix CheapShark sont en **dollars ($)**, pas en euros (l'API ne
-  propose pas de conversion).
-- La "fiabilité" est une simple liste de boutiques connues
-  (`TRUSTED_STORE_IDS` dans `netlify/functions/search.js`), pas une vraie
-  note de confiance.
-
-## Aller plus loin : livres et consoles
-
-Pour une vraie recherche sur ces catégories, l'option la plus complète est
-l'API **Google Custom Search** (recherche web générale, 100 requêtes/jour
-gratuites). Mais Google exige d'associer une carte bancaire au projet
-Google Cloud pour activer cette API, même si l'usage reste gratuit sous le
-quota. Si tu veux franchir cette étape un jour :
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → active
-   "Custom Search API" → associe une carte bancaire (Facturation).
-2. Crée une clé API dans "Identifiants".
-3. Crée un moteur sur [programmablesearchengine.google.com](https://programmablesearchengine.google.com/controlpanel/create)
-   (laisser "sites à rechercher" vide = recherche tout le web), récupère
-   son ID (cx).
-4. Ajoute `GOOGLE_SEARCH_API_KEY` et `GOOGLE_SEARCH_CX` dans les variables
-   d'environnement Netlify, jamais dans le code.
-
-⚠️ Ne mets jamais de clé API dans le code ou sur GitHub — uniquement dans
-les variables d'environnement Netlify.
+- Les prix CheapShark sont en **dollars ($)**, les prix Gemini en euros.
+- Gemini peut occasionnellement mal interpréter une recherche ou renvoyer
+  un format inattendu — le site l'indique clairement plutôt que d'afficher
+  des données fausses silencieusement.
+- La "fiabilité" est une liste de boutiques connues par catégorie
+  (`TRUSTED_STORE_IDS` / `TRUSTED_DOMAINS` dans
+  `netlify/functions/search.js`), pas une vraie note de confiance.
+- Toujours vérifier le prix sur le site du vendeur avant d'acheter.

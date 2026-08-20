@@ -1,10 +1,9 @@
-// Fonction serverless Netlify : vraie recherche de prix pour les jeux vidéo
-// via l'API gratuite CheapShark (aucune clé, aucun compte, aucune carte
-// bancaire nécessaire). Compare les prix réels sur Steam, GOG, Epic, etc.
-//
-// Livres et consoles n'ont pas d'équivalent gratuit sans carte bancaire
-// pour l'instant (Google Custom Search en aurait un, mais Google exige un
-// compte de facturation même sous le quota gratuit) — voir README.
+// Fonction serverless Netlify : vraie recherche de prix.
+// - Jeux vidéo : API gratuite CheapShark (aucune clé, aucun compte).
+// - Livres / Consoles : API Gemini avec l'outil "Google Search" (grounding),
+//   qui cherche réellement sur le web puis renvoie une liste structurée.
+//   Gratuite via Google AI Studio, sans carte bancaire (contrairement à
+//   Google Custom Search) — voir README pour la configuration.
 
 const STORE_NAMES = {
   1: "Steam",
@@ -25,26 +24,36 @@ const STORE_NAMES = {
 // revendeurs autorisés bien établis). Les autres sont marquées "à vérifier".
 const TRUSTED_STORE_IDS = new Set([1, 7, 8, 11, 13, 15, 25, 27, 31]);
 
-exports.handler = async (event) => {
-  const params = event.queryStringParameters || {};
-  const category = params.category || "";
-  const keyword = (params.keyword || "").trim();
-  const tags = (params.tags || "").split(",").filter(Boolean);
-  const budget = params.budget ? Number(params.budget) : null;
+const TRUSTED_DOMAINS = {
+  livres: ["fnac.com", "cultura.com", "decitre.fr", "leslibraires.fr", "amazon.fr", "momox-shop.fr", "rakuten.com"],
+  consoles: [
+    "fnac.com",
+    "micromania.fr",
+    "cdiscount.com",
+    "amazon.fr",
+    "boulanger.com",
+    "darty.com",
+    "rakuten.com",
+    "auchan.fr",
+    "leclerc.fr",
+  ],
+};
 
-  if (category !== "jeux") {
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: "",
-        results: [],
-        note:
-          "La vraie recherche n'est disponible que pour les Jeux vidéo pour l'instant (API gratuite sans carte bancaire : CheapShark). Livres et consoles n'ont pas encore d'équivalent gratuit sans carte.",
-      }),
-    };
+const CATEGORY_LABELS = {
+  livres: "livre",
+  consoles: "console de jeux vidéo",
+};
+
+function isKnownDomain(url, category) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return (TRUSTED_DOMAINS[category] || []).some((d) => host.includes(d));
+  } catch {
+    return false;
   }
+}
 
+async function searchCheapShark(keyword, tags, budget) {
   const title = keyword || tags[0] || "";
   if (!title) {
     return {
@@ -109,4 +118,136 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: `Impossible de contacter CheapShark : ${err.message}` }),
     };
   }
+}
+
+function extractJsonArray(text) {
+  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = cleaned.indexOf("[");
+  const end = cleaned.lastIndexOf("]");
+  if (start === -1 || end === -1) throw new Error("Aucun JSON trouvé dans la réponse.");
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+async function searchGemini(category, keyword, tags, budget) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error:
+          "Clé Gemini non configurée. Ajoute GEMINI_API_KEY dans les variables d'environnement Netlify (clé gratuite sur aistudio.google.com/apikey), puis redéploie.",
+      }),
+    };
+  }
+
+  const query = [keyword, ...tags].filter(Boolean).join(" ");
+  if (!query) {
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "", results: [], note: "Ajoute un mot-clé pour lancer la recherche." }),
+    };
+  }
+
+  const categoryLabel = CATEGORY_LABELS[category] || category;
+  const prompt = `Cherche sur internet les offres actuelles les moins chères pour acheter "${query}" (catégorie : ${categoryLabel}) chez des vendeurs fiables livrant en France.
+Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, sans markdown, au format exact :
+[{"title": "nom exact du produit", "vendor": "nom du vendeur", "price": 19.99, "url": "https://lien-direct-vers-le-produit"}]
+Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais de prix ou d'URL inventés : base-toi uniquement sur des résultats de recherche réels. Si tu ne trouves rien, réponds avec un tableau vide [].`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.1 },
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Gemini non-OK response:", res.status, JSON.stringify(data).slice(0, 500));
+      return {
+        statusCode: res.status,
+        body: JSON.stringify({ error: data.error?.message || `Erreur Gemini (HTTP ${res.status}).` }),
+      };
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+    let items;
+    try {
+      items = extractJsonArray(text);
+    } catch (parseErr) {
+      console.error("Gemini parse failed. Raw text:", text.slice(0, 800));
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          results: [],
+          note: "Gemini a répondu mais dans un format inattendu. Réessaie, ou reformule ta recherche.",
+        }),
+      };
+    }
+
+    const results = items
+      .filter((it) => it && it.title && it.url)
+      .map((it) => {
+        const price = it.price != null ? Number(it.price) : null;
+        return {
+          title: String(it.title),
+          link: String(it.url),
+          snippet: it.vendor ? `Proposé par ${it.vendor}` : "",
+          displayLink: it.vendor || (() => {
+            try {
+              return new URL(it.url).hostname.replace(/^www\./, "");
+            } catch {
+              return "Boutique";
+            }
+          })(),
+          price: Number.isFinite(price) ? price : null,
+          currency: "€",
+          trustworthy: isKnownDomain(it.url, category),
+          withinBudget: budget == null || price == null ? null : price <= budget,
+        };
+      });
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, results }),
+    };
+  } catch (err) {
+    console.error("Gemini fetch failed:", err);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: `Impossible de contacter Gemini : ${err.message}` }),
+    };
+  }
+}
+
+exports.handler = async (event) => {
+  const params = event.queryStringParameters || {};
+  const category = params.category || "";
+  const keyword = (params.keyword || "").trim();
+  const tags = (params.tags || "").split(",").filter(Boolean);
+  const budget = params.budget ? Number(params.budget) : null;
+
+  if (category === "jeux") {
+    return searchCheapShark(keyword, tags, budget);
+  }
+  if (category === "livres" || category === "consoles") {
+    return searchGemini(category, keyword, tags, budget);
+  }
+
+  return {
+    statusCode: 200,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: "", results: [], note: "Catégorie inconnue." }),
+  };
 };
