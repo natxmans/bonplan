@@ -75,9 +75,19 @@ async function searchGemini(category, keyword, tags, budget) {
   }
 
   const categoryLabel = CATEGORY_LABELS[category] || category;
-  const prompt = `Cherche sur internet les offres actuelles les moins chères pour acheter "${query}" (catégorie : ${categoryLabel}) chez des vendeurs fiables livrant en France.
+  const isGames = category === "jeux";
+
+  const typeInstruction = isGames
+    ? `\nPour chaque résultat, utilise tes connaissances du jeu vidéo concerné pour indiquer aussi son "type" exact parmi : "base" (le jeu complet, l'édition standard), "extension" (DLC, extension, season pass, contenu additionnel payant qui nécessite le jeu de base), ou "annexe" (bande originale, artbook, goodies, produit dérivé qui n'est pas le jeu). Ne te fie pas qu'au titre : utilise ce que tu sais réellement de ce jeu.`
+    : "";
+
+  const jsonFormat = isGames
+    ? `[{"title": "nom exact du produit", "vendor": "nom du vendeur", "price": 19.99, "url": "https://lien-direct-vers-le-produit", "type": "base"}]`
+    : `[{"title": "nom exact du produit", "vendor": "nom du vendeur", "price": 19.99, "url": "https://lien-direct-vers-le-produit"}]`;
+
+  const prompt = `Cherche sur internet les offres actuelles les moins chères pour acheter "${query}" (catégorie : ${categoryLabel}) chez des vendeurs fiables livrant en France.${typeInstruction}
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, sans markdown, au format exact :
-[{"title": "nom exact du produit", "vendor": "nom du vendeur", "price": 19.99, "url": "https://lien-direct-vers-le-produit"}]
+${jsonFormat}
 Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais de prix ou d'URL inventés : base-toi uniquement sur des résultats de recherche réels. Si tu ne trouves rien, réponds avec un tableau vide [].`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -124,6 +134,7 @@ Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais 
       .filter((it) => it && it.title && it.url)
       .map((it) => {
         const price = it.price != null ? Number(it.price) : null;
+        const itemType = ["base", "extension", "annexe"].includes(it.type) ? it.type : null;
         return {
           title: String(it.title),
           link: String(it.url),
@@ -139,6 +150,7 @@ Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais 
           currency: "€",
           trustworthy: isKnownDomain(it.url, category),
           withinBudget: budget == null || price == null ? null : price <= budget,
+          itemType,
         };
       });
 

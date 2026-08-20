@@ -65,12 +65,17 @@ function showMessage(icon, text) {
 const EXTRA_PATTERN = /soundtrack|\bost\b|artbook|art book|comic\b|bande originale|goodies|art\s*of\s/i;
 const EXTENSION_PATTERN = /\bdlc\b|expansion|extension|add-?on|content pack|season pass|\bbundle\b|deluxe edition|ultimate edition|complete edition|goty|game of the year/i;
 
-function isExtra(title) {
-  return EXTRA_PATTERN.test(title);
+// Gemini classe déjà chaque résultat de jeu vidéo (r.itemType : "base",
+// "extension" ou "annexe") en s'appuyant sur sa connaissance du jeu, ce
+// qui est bien plus fiable qu'une détection par mots-clés dans le titre.
+// Ces regex ne servent que de repli si Gemini n'a pas fourni de type.
+function isExtra(r) {
+  return r.itemType ? r.itemType === "annexe" : EXTRA_PATTERN.test(r.title);
 }
 
-function isExtension(title) {
-  return EXTENSION_PATTERN.test(title) && !isExtra(title);
+function isExtension(r) {
+  if (r.itemType) return r.itemType === "extension";
+  return EXTENSION_PATTERN.test(r.title) && !EXTRA_PATTERN.test(r.title);
 }
 
 function rankByPriceAndTrust(items) {
@@ -100,7 +105,7 @@ function createCard(r, { isBest, budget, showTypeTag = false }) {
   });
 
   const overBudget = budget != null && r.price != null && r.price > budget;
-  const extension = isExtension(r.title);
+  const extension = isExtension(r);
 
   const avatar = document.createElement("div");
   avatar.className = "product-avatar";
@@ -157,8 +162,8 @@ function renderResults(results, { budget, category }) {
   }
 
   const isGames = category === "jeux";
-  const mainResults = isGames ? results.filter((r) => !isExtra(r.title)) : results;
-  const extras = isGames ? results.filter((r) => isExtra(r.title)) : [];
+  const mainResults = isGames ? results.filter((r) => !isExtra(r)) : results;
+  const extras = isGames ? results.filter((r) => isExtra(r)) : [];
 
   const rankedMain = rankByPriceAndTrust(mainResults);
   const bestIndex = rankedMain.findIndex((r) => r.price != null);
