@@ -8,8 +8,13 @@
   --text: #f2f4fb;
   --muted: #96a0c2;
   --muted-dim: #6b7494;
+
+  /* Accent : retinté dynamiquement selon la catégorie choisie (voir
+     [data-category] plus bas et app.js). */
   --accent: #6d8dff;
-  --accent-soft: rgba(109, 141, 255, 0.14);
+  --accent-grad2: #8f6dff;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+
   --accent-2: #34d399;
   --accent-2-soft: rgba(52, 211, 153, 0.14);
   --warn: #fbbf24;
@@ -24,6 +29,22 @@
   --font-display: "Sora", "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --mx: 50%;
+  --my: 15%;
+}
+
+/* Thème d'accent par catégorie */
+:root[data-category="livres"] {
+  --accent: #f5a524;
+  --accent-grad2: #fb923c;
+}
+:root[data-category="jeux"] {
+  --accent: #6d8dff;
+  --accent-grad2: #8f6dff;
+}
+:root[data-category="consoles"] {
+  --accent: #22c1dc;
+  --accent-grad2: #34d399;
 }
 
 * {
@@ -86,6 +107,20 @@ body {
   mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 0%, transparent 75%);
 }
 
+.bg-cursor-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: radial-gradient(480px circle at var(--mx) var(--my), color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+  transition: background 0.6s ease;
+}
+
+@media (max-width: 900px), (hover: none) {
+  .bg-cursor-glow {
+    display: none;
+  }
+}
+
 .bg-shapes {
   position: fixed;
   inset: 0;
@@ -126,6 +161,7 @@ body {
 /* ---------- Header ---------- */
 
 .site-header {
+  position: relative;
   padding: 56px 0 40px;
   text-align: center;
   animation: fade-in-up 0.5s ease backwards;
@@ -134,6 +170,59 @@ body {
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Étiquettes de prix décoratives flottant autour du hero */
+
+.price-chip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 13px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.price-chip span {
+  font-family: var(--font-mono);
+}
+
+.chip-1 {
+  top: 18%;
+  left: 6%;
+  transform: rotate(-8deg);
+  animation: float-a 8s ease-in-out infinite;
+  color: var(--accent-2);
+}
+
+.chip-2 {
+  top: 8%;
+  right: 8%;
+  transform: rotate(6deg);
+  animation: float-b 10s ease-in-out infinite;
+  color: var(--accent-2);
+}
+
+.chip-3 {
+  bottom: 4%;
+  right: 4%;
+  transform: rotate(-4deg);
+  animation: float-a 7s ease-in-out infinite reverse;
+  color: var(--warn);
+}
+
+@media (max-width: 900px) {
+  .price-chip {
+    display: none;
+  }
 }
 
 .logo {
@@ -168,7 +257,8 @@ body {
   height: 26px;
   font-size: 0.95rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #9d6dff);
+  background: linear-gradient(135deg, var(--accent), var(--accent-grad2));
+  transition: background 0.4s ease;
 }
 
 .logo-text {
@@ -255,7 +345,8 @@ body {
   right: -80px;
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(109, 141, 255, 0.22), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+  transition: background 0.5s ease;
   pointer-events: none;
 }
 
@@ -394,14 +485,14 @@ select {
   padding: 15px;
   border-radius: var(--radius-sm);
   border: none;
-  background: linear-gradient(135deg, var(--accent), #8f6dff);
+  background: linear-gradient(135deg, var(--accent), var(--accent-grad2));
   color: white;
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-  box-shadow: 0 12px 30px -10px rgba(109, 141, 255, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, background 0.4s ease;
+  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--accent) 55%, transparent);
   overflow: hidden;
 }
 
@@ -426,7 +517,7 @@ select {
 .btn-search:hover {
   transform: translateY(-2px);
   filter: brightness(1.08);
-  box-shadow: 0 16px 36px -8px rgba(109, 141, 255, 0.65);
+  box-shadow: 0 16px 36px -8px color-mix(in srgb, var(--accent) 65%, transparent);
 }
 
 .btn-search:active {

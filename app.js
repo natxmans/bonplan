@@ -13,7 +13,24 @@ function initCategories() {
     categorySelect.appendChild(opt);
   });
   renderTags(categorySelect.value);
+  document.documentElement.dataset.category = categorySelect.value;
 }
+
+// Retinte l'accent du site (bouton, focus, logo...) selon la catégorie.
+categorySelect.addEventListener("change", () => {
+  document.documentElement.dataset.category = categorySelect.value;
+});
+
+// Fait suivre une lueur ambiante au curseur (throttle via requestAnimationFrame).
+let cursorRaf = null;
+document.addEventListener("pointermove", (e) => {
+  if (cursorRaf) return;
+  cursorRaf = requestAnimationFrame(() => {
+    document.documentElement.style.setProperty("--mx", `${(e.clientX / window.innerWidth) * 100}%`);
+    document.documentElement.style.setProperty("--my", `${(e.clientY / window.innerHeight) * 100}%`);
+    cursorRaf = null;
+  });
+});
 
 function renderTags(categoryKey) {
   tagsContainer.innerHTML = "";
