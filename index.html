@@ -7,25 +7,55 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8E%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="bg-glow" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <svg class="bg-shapes" aria-hidden="true" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMin slice">
+    <defs>
+      <linearGradient id="shapeGradA" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#6d8dff" />
+        <stop offset="100%" stop-color="#9d6dff" />
+      </linearGradient>
+      <linearGradient id="shapeGradB" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#34d399" />
+        <stop offset="100%" stop-color="#22c1dc" />
+      </linearGradient>
+      <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="55" />
+      </filter>
+    </defs>
+    <g filter="url(#softBlur)">
+      <circle class="float-shape shape-a" cx="90" cy="120" r="130" fill="url(#shapeGradA)" />
+      <circle class="float-shape shape-b" cx="1090" cy="90" r="150" fill="url(#shapeGradB)" />
+      <circle class="float-shape shape-c" cx="1000" cy="420" r="90" fill="#fbbf24" />
+    </g>
+  </svg>
 
   <header class="site-header">
     <div class="wrap">
       <div class="logo"><span class="logo-mark">🔎</span><span class="logo-text">BonPlan</span></div>
+      <p class="eyebrow">Comparateur intelligent</p>
       <h1 class="tagline">Donne ton budget et tes goûts,<br />on trouve le meilleur plan.</h1>
       <p class="demo-banner">
         <span class="demo-banner-icon">⚡</span>
         <span>Vraie recherche de prix en direct : <strong>Jeux vidéo</strong> (CheapShark) et <strong>Livres / Consoles</strong> (Gemini + recherche web).</span>
       </p>
+
+      <div class="trust-strip">
+        <div class="trust-item"><span class="trust-icon">🌍</span>Recherche web réelle</div>
+        <div class="trust-item"><span class="trust-icon">🛡️</span>Fiabilité vérifiée</div>
+        <div class="trust-item"><span class="trust-icon">✨</span>100% gratuit</div>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
     <section class="search-panel">
+      <div class="search-panel-glow" aria-hidden="true"></div>
       <form id="search-form">
         <div class="field">
           <label for="category"><span class="field-icon">🎯</span>Catégorie</label>
@@ -69,6 +99,7 @@
 
   <footer class="site-footer">
     <div class="wrap">
+      <div class="footer-line" aria-hidden="true"></div>
       <p>Recherche propulsée par <strong>CheapShark</strong> (jeux vidéo) et <strong>Gemini</strong> (livres, consoles).</p>
     </div>
   </footer>
