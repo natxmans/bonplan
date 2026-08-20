@@ -53,7 +53,7 @@ function extractJsonArray(text) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-async function searchGemini(category, keyword, tags, budget) {
+async function searchGemini(category, keyword, tags) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return {
@@ -149,7 +149,6 @@ Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais 
           price: Number.isFinite(price) ? price : null,
           currency: "€",
           trustworthy: isKnownDomain(it.url, category),
-          withinBudget: budget == null || price == null ? null : price <= budget,
           itemType,
         };
       });
@@ -173,10 +172,9 @@ exports.handler = async (event) => {
   const category = params.category || "";
   const keyword = (params.keyword || "").trim();
   const tags = (params.tags || "").split(",").filter(Boolean);
-  const budget = params.budget ? Number(params.budget) : null;
 
   if (category === "livres" || category === "jeux" || category === "consoles") {
-    return searchGemini(category, keyword, tags, budget);
+    return searchGemini(category, keyword, tags);
   }
 
   return {

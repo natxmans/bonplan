@@ -170,6 +170,26 @@ function createCard(r, { isBest, budget, showTypeTag = false }) {
   return card;
 }
 
+// Affiche un groupe de résultats homogène (même "type" de produit) avec
+// son propre classement et son propre "meilleur plan". Mélanger des types
+// différents (jeu de base / extension / bande originale) dans un seul
+// classement par prix n'a pas de sens : une extension moins chère que le
+// jeu de base ne devrait jamais lui voler le badge "Meilleur plan".
+function renderSection({ items, icon, label, budget, showTypeTag, extraClass = "" }) {
+  if (items.length === 0) return;
+  const ranked = rankByPriceAndTrust(items);
+  const bestIndex = ranked.findIndex((r) => r.price != null);
+
+  const heading = document.createElement("p");
+  heading.className = "results-summary" + (extraClass ? ` ${extraClass}` : "");
+  heading.innerHTML = `<span>${icon}</span> ${label}`;
+  resultsEl.appendChild(heading);
+
+  ranked.forEach((r, i) => {
+    resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget, showTypeTag }));
+  });
+}
+
 function renderResults(results, { budget, category }) {
   resultsEl.innerHTML = "";
 
@@ -179,35 +199,39 @@ function renderResults(results, { budget, category }) {
   }
 
   const isGames = category === "jeux";
-  const mainResults = isGames ? results.filter((r) => !isExtra(r)) : results;
-  const extras = isGames ? results.filter((r) => isExtra(r)) : [];
+  const baseResults = isGames ? results.filter((r) => !isExtra(r) && !isExtension(r)) : results;
+  const extensionResults = isGames ? results.filter((r) => isExtension(r)) : [];
+  const extraResults = isGames ? results.filter((r) => isExtra(r)) : [];
 
-  const rankedMain = rankByPriceAndTrust(mainResults);
-  const bestIndex = rankedMain.findIndex((r) => r.price != null);
-
-  const summary = document.createElement("p");
-  summary.className = "results-summary";
-  summary.innerHTML = `<span>✨</span> ${rankedMain.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`;
-  resultsEl.appendChild(summary);
-
-  if (rankedMain.length === 0) {
-    showMessage("🔍", "Seules des bandes originales / extras ont été trouvés pour ce mot-clé, pas le jeu lui-même.");
+  if (baseResults.length === 0) {
+    showMessage("🔍", "Seules des extensions/DLC ou des bandes originales ont été trouvées pour ce mot-clé, pas le produit principal.");
   } else {
-    rankedMain.forEach((r, i) => {
-      resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget, showTypeTag: isGames }));
+    renderSection({
+      items: baseResults,
+      icon: "✨",
+      label: `${baseResults.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`,
+      budget,
+      showTypeTag: isGames,
     });
   }
 
-  if (extras.length > 0) {
-    const extrasHeading = document.createElement("p");
-    extrasHeading.className = "results-summary extras-heading";
-    extrasHeading.innerHTML = `<span>🎵</span> Bandes originales & extras (hors du jeu lui-même)`;
-    resultsEl.appendChild(extrasHeading);
+  renderSection({
+    items: extensionResults,
+    icon: "🧩",
+    label: "Extensions & DLC (nécessitent le jeu de base)",
+    budget,
+    showTypeTag: false,
+    extraClass: "extras-heading",
+  });
 
-    rankByPriceAndTrust(extras).forEach((r) => {
-      resultsEl.appendChild(createCard(r, { isBest: false, budget, showTypeTag: false }));
-    });
-  }
+  renderSection({
+    items: extraResults,
+    icon: "🎵",
+    label: "Bandes originales & extras (hors du jeu lui-même)",
+    budget,
+    showTypeTag: false,
+    extraClass: "extras-heading",
+  });
 }
 
 form.addEventListener("submit", async (e) => {
