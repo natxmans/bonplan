@@ -36,6 +36,18 @@ const CATEGORY_LABELS = {
   consoles: "console de jeux vidéo",
 };
 
+// Gemini est censé renvoyer un nombre JSON (19.99), mais un LLM peut parfois
+// s'écarter du format demandé et renvoyer une chaîne au format français
+// (ex: "19,99"). On tente de récupérer ce cas plutôt que de perdre le prix.
+function parsePrice(value) {
+  if (value == null) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const normalized = String(value).replace(/[^\d.,-]/g, "").replace(",", ".");
+  if (!/\d/.test(normalized)) return null; // "" (ex: "gratuit") sinon Number("") vaut 0
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
 function isKnownDomain(url, category) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
@@ -133,7 +145,7 @@ Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais 
     const results = items
       .filter((it) => it && it.title && it.url)
       .map((it) => {
-        const price = it.price != null ? Number(it.price) : null;
+        const price = parsePrice(it.price);
         const itemType = ["base", "extension", "annexe"].includes(it.type) ? it.type : null;
         return {
           title: String(it.title),
@@ -146,7 +158,7 @@ Maximum 10 résultats. Le prix est un nombre décimal en euros. Ne donne jamais 
               return "Boutique";
             }
           })(),
-          price: Number.isFinite(price) ? price : null,
+          price,
           currency: "€",
           trustworthy: isKnownDomain(it.url, category),
           itemType,

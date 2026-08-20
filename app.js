@@ -95,6 +95,24 @@ function isExtension(r) {
   return EXTENSION_PATTERN.test(r.title) && !EXTRA_PATTERN.test(r.title);
 }
 
+// Les titres/vendeurs viennent de résultats web (via Gemini), donc non
+// fiables : jamais les insérer dans innerHTML sans échappement, et jamais
+// ouvrir un lien qui ne soit pas explicitement http(s).
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value == null ? "" : String(value);
+  return div.innerHTML;
+}
+
+function safeUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.href);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : "#";
+  } catch {
+    return "#";
+  }
+}
+
 function rankByPriceAndTrust(items) {
   return [...items].sort((a, b) => {
     const aHasPrice = a.price != null;
@@ -107,12 +125,14 @@ function rankByPriceAndTrust(items) {
 }
 
 function createCard(r, { isBest, budget, showTypeTag = false }) {
+  const link = safeUrl(r.link);
+
   const card = document.createElement("article");
   card.className = "product-card" + (isBest ? " best-pick" : "");
   card.tabIndex = 0;
   card.setAttribute("role", "link");
   card.setAttribute("aria-label", `Ouvrir ${r.title} sur ${r.displayLink}`);
-  const openLink = () => window.open(r.link, "_blank", "noopener,noreferrer");
+  const openLink = () => window.open(link, "_blank", "noopener,noreferrer");
   card.addEventListener("click", openLink);
   card.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -137,8 +157,8 @@ function createCard(r, { isBest, budget, showTypeTag = false }) {
   head.className = "product-head";
   head.innerHTML = `
     <div>
-      <div class="product-title"><a href="${r.link}" target="_blank" rel="noopener noreferrer">${r.title}</a></div>
-      <div class="product-tags">${r.displayLink}${showTypeTag ? (extension ? ' · <span class="type-tag">🧩 Extension / DLC</span>' : ' · <span class="type-tag base">🎮 Jeu de base</span>') : ""}</div>
+      <div class="product-title"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a></div>
+      <div class="product-tags">${escapeHtml(r.displayLink)}${showTypeTag ? (extension ? ' · <span class="type-tag">🧩 Extension / DLC</span>' : ' · <span class="type-tag base">🎮 Jeu de base</span>') : ""}</div>
     </div>
     <div>
       ${isBest ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
