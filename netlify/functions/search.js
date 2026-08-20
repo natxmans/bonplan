@@ -1,31 +1,22 @@
-// Fonction serverless Netlify : vraie recherche de prix.
-// - Jeux vidéo : API gratuite CheapShark (aucune clé, aucun compte).
-// - Livres / Consoles : API Gemini avec l'outil "Google Search" (grounding),
-//   qui cherche réellement sur le web puis renvoie une liste structurée.
-//   Gratuite via Google AI Studio, sans carte bancaire (contrairement à
-//   Google Custom Search) — voir README pour la configuration.
-
-const STORE_NAMES = {
-  1: "Steam",
-  7: "GOG",
-  8: "Origin (EA)",
-  11: "Humble Store",
-  13: "Uplay (Ubisoft)",
-  15: "Fanatical",
-  23: "GameBillet",
-  25: "Epic Games Store",
-  27: "Gamesplanet",
-  30: "IndieGala",
-  31: "Blizzard Shop",
-  33: "DLGamer",
-};
-
-// Boutiques considérées fiables par défaut (éditeurs officiels ou
-// revendeurs autorisés bien établis). Les autres sont marquées "à vérifier".
-const TRUSTED_STORE_IDS = new Set([1, 7, 8, 11, 13, 15, 25, 27, 31]);
+// Fonction serverless Netlify : vraie recherche de prix pour les 3
+// catégories (livres, jeux vidéo, consoles) via l'API Gemini avec son
+// outil "Google Search" (grounding), qui cherche réellement sur le web
+// puis renvoie une liste structurée. Gratuite via Google AI Studio, sans
+// carte bancaire — voir README pour la configuration.
 
 const TRUSTED_DOMAINS = {
   livres: ["fnac.com", "cultura.com", "decitre.fr", "leslibraires.fr", "amazon.fr", "momox-shop.fr", "rakuten.com"],
+  jeux: [
+    "store.steampowered.com",
+    "gog.com",
+    "epicgames.com",
+    "instant-gaming.com",
+    "fnac.com",
+    "micromania.fr",
+    "cdiscount.com",
+    "amazon.fr",
+    "eneba.com",
+  ],
   consoles: [
     "fnac.com",
     "micromania.fr",
@@ -41,6 +32,7 @@ const TRUSTED_DOMAINS = {
 
 const CATEGORY_LABELS = {
   livres: "livre",
+  jeux: "jeu vidéo",
   consoles: "console de jeux vidéo",
 };
 
@@ -50,73 +42,6 @@ function isKnownDomain(url, category) {
     return (TRUSTED_DOMAINS[category] || []).some((d) => host.includes(d));
   } catch {
     return false;
-  }
-}
-
-async function searchCheapShark(keyword, tags, budget) {
-  const title = keyword || tags[0] || "";
-  if (!title) {
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: "",
-        results: [],
-        note: "Ajoute un mot-clé (le nom du jeu, ex : Zelda) pour lancer la recherche.",
-      }),
-    };
-  }
-
-  const url = new URL("https://www.cheapshark.com/api/1.0/deals");
-  url.searchParams.set("title", title);
-  url.searchParams.set("sortBy", "Price");
-  url.searchParams.set("pageSize", "20");
-
-  try {
-    const res = await fetch(url.toString(), {
-      headers: {
-        "User-Agent": "BonPlanApp/1.0 (+https://bonplan-carine-nathan-2026x9.netlify.app)",
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) {
-      const bodyText = await res.text().catch(() => "");
-      console.error("CheapShark non-OK response:", res.status, bodyText.slice(0, 300));
-      return {
-        statusCode: res.status,
-        body: JSON.stringify({ error: `Erreur CheapShark (HTTP ${res.status}).` }),
-      };
-    }
-    const deals = await res.json();
-
-    const results = deals.map((d) => {
-      const price = parseFloat(d.salePrice);
-      const storeId = Number(d.storeID);
-      return {
-        title: d.title,
-        link: `https://www.cheapshark.com/redirect?dealID=${d.dealID}`,
-        snippet: `Prix normal ${parseFloat(d.normalPrice).toFixed(2)} $ — économie ${Math.round(
-          parseFloat(d.savings) || 0
-        )}%`,
-        displayLink: STORE_NAMES[storeId] || `Boutique #${storeId}`,
-        price,
-        currency: "$",
-        trustworthy: TRUSTED_STORE_IDS.has(storeId),
-        withinBudget: budget == null ? null : price <= budget,
-      };
-    });
-
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: title, results }),
-    };
-  } catch (err) {
-    console.error("CheapShark fetch failed:", err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: `Impossible de contacter CheapShark : ${err.message}` }),
-    };
   }
 }
 
@@ -238,10 +163,7 @@ exports.handler = async (event) => {
   const tags = (params.tags || "").split(",").filter(Boolean);
   const budget = params.budget ? Number(params.budget) : null;
 
-  if (category === "jeux") {
-    return searchCheapShark(keyword, tags, budget);
-  }
-  if (category === "livres" || category === "consoles") {
+  if (category === "livres" || category === "jeux" || category === "consoles") {
     return searchGemini(category, keyword, tags, budget);
   }
 

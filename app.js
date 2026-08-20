@@ -84,7 +84,7 @@ function rankByPriceAndTrust(items) {
   });
 }
 
-function createCard(r, { isBest, budget, showTypeTag = true }) {
+function createCard(r, { isBest, budget, showTypeTag = false }) {
   const card = document.createElement("article");
   card.className = "product-card" + (isBest ? " best-pick" : "");
   card.tabIndex = 0;
@@ -148,7 +148,7 @@ function createCard(r, { isBest, budget, showTypeTag = true }) {
   return card;
 }
 
-function renderResults(results, { budget }) {
+function renderResults(results, { budget, category }) {
   resultsEl.innerHTML = "";
 
   if (results.length === 0) {
@@ -156,8 +156,9 @@ function renderResults(results, { budget }) {
     return;
   }
 
-  const mainResults = results.filter((r) => !isExtra(r.title));
-  const extras = results.filter((r) => isExtra(r.title));
+  const isGames = category === "jeux";
+  const mainResults = isGames ? results.filter((r) => !isExtra(r.title)) : results;
+  const extras = isGames ? results.filter((r) => isExtra(r.title)) : [];
 
   const rankedMain = rankByPriceAndTrust(mainResults);
   const bestIndex = rankedMain.findIndex((r) => r.price != null);
@@ -171,7 +172,7 @@ function renderResults(results, { budget }) {
     showMessage("🔍", "Seules des bandes originales / extras ont été trouvés pour ce mot-clé, pas le jeu lui-même.");
   } else {
     rankedMain.forEach((r, i) => {
-      resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget }));
+      resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget, showTypeTag: isGames }));
     });
   }
 
@@ -213,7 +214,7 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
-    renderResults(data.results, { budget });
+    renderResults(data.results, { budget, category });
   } catch (err) {
     showMessage("❌", "Impossible de joindre la recherche. Vérifie ta connexion et réessaie.");
   }
