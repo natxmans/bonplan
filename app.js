@@ -5,6 +5,82 @@ const resultsEl = document.getElementById("results");
 
 const AVATAR_PALETTE = ["#6d8dff", "#9d6dff", "#34d399", "#fbbf24", "#fb7185", "#22c1dc", "#f97362"];
 
+// ---------- Favoris (100% local, aucun appel réseau) ----------
+
+const FAVORITES_KEY = "bonplan_favorites";
+let viewingFavorites = false;
+let lastSearch = null; // { results, budget, category } pour revenir à la recherche après les favoris
+
+function getFavorites() {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function isFavorited(link) {
+  return getFavorites().some((f) => f.link === link);
+}
+
+// Ajoute ou retire l'item des favoris ; renvoie true si on vient de l'ajouter.
+function toggleFavorite(item) {
+  const favorites = getFavorites();
+  const idx = favorites.findIndex((f) => f.link === item.link);
+  if (idx >= 0) {
+    favorites.splice(idx, 1);
+  } else {
+    favorites.unshift({ ...item, savedAt: Date.now() });
+  }
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+  } catch {
+    // stockage indisponible (navigation privée...) : on ignore silencieusement
+  }
+  updateFavoritesCount();
+  return idx < 0;
+}
+
+function updateFavoritesCount() {
+  const count = getFavorites().length;
+  const countEl = document.getElementById("favorites-count");
+  if (countEl) countEl.textContent = String(count);
+  const btn = document.getElementById("favorites-toggle");
+  if (btn) btn.classList.toggle("has-items", count > 0);
+}
+
+function showFavoritesView() {
+  viewingFavorites = true;
+  document.getElementById("favorites-toggle")?.classList.add("active");
+  const favorites = getFavorites();
+  resultsEl.innerHTML = "";
+
+  if (favorites.length === 0) {
+    showMessage("⭐", "Aucun favori pour l'instant. Clique sur l'étoile d'un résultat pour le sauvegarder ici.");
+    return;
+  }
+
+  const heading = document.createElement("p");
+  heading.className = "results-summary";
+  heading.innerHTML = `<span>⭐</span> ${favorites.length} favori(s) enregistré(s)`;
+  resultsEl.appendChild(heading);
+
+  favorites.forEach((item) => {
+    resultsEl.appendChild(createCard(item, { isBest: false, budget: null, showTypeTag: false, category: item.category }));
+  });
+}
+
+function exitFavoritesView() {
+  viewingFavorites = false;
+  document.getElementById("favorites-toggle")?.classList.remove("active");
+  if (lastSearch) {
+    renderResults(lastSearch.results, { budget: lastSearch.budget, category: lastSearch.category });
+  } else {
+    showMessage("🧭", "Remplis le formulaire puis clique sur « Chercher le meilleur plan ».");
+  }
+}
+
 function initCategories() {
   Object.entries(CATEGORIES).forEach(([key, cat]) => {
     const opt = document.createElement("option");
@@ -124,8 +200,17 @@ function rankByPriceAndTrust(items) {
   });
 }
 
-function createCard(r, { isBest, budget, showTypeTag = false }) {
+function createCard(r, { isBest, budget, showTypeTag = false, category = "" }) {
   const link = safeUrl(r.link);
+  const favItem = {
+    title: r.title,
+    link,
+    displayLink: r.displayLink,
+    price: r.price,
+    currency: r.currency || "€",
+    trustworthy: r.trustworthy,
+    category,
+  };
 
   const card = document.createElement("article");
   card.className = "product-card" + (isBest ? " best-pick" : "");
@@ -160,12 +245,24 @@ function createCard(r, { isBest, budget, showTypeTag = false }) {
       <div class="product-title"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.title)}</a></div>
       <div class="product-tags">${escapeHtml(r.displayLink)}${showTypeTag ? (extension ? ' · <span class="type-tag">🧩 Extension / DLC</span>' : ' · <span class="type-tag base">🎮 Jeu de base</span>') : ""}</div>
     </div>
-    <div>
+    <div class="card-actions">
+      <button type="button" class="fav-btn${isFavorited(link) ? " active" : ""}" aria-label="${isFavorited(link) ? "Retirer des favoris" : "Ajouter aux favoris"}">${isFavorited(link) ? "★" : "☆"}</button>
       ${isBest ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
       ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
     </div>
   `;
   head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
+
+  const favBtn = head.querySelector(".fav-btn");
+  favBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const added = toggleFavorite(favItem);
+    favBtn.textContent = added ? "★" : "☆";
+    favBtn.classList.toggle("active", added);
+    favBtn.setAttribute("aria-label", added ? "Retirer des favoris" : "Ajouter aux favoris");
+    if (!added && viewingFavorites) showFavoritesView();
+  });
+
   body.appendChild(head);
 
   const currency = r.currency || "€";
@@ -195,7 +292,7 @@ function createCard(r, { isBest, budget, showTypeTag = false }) {
 // différents (jeu de base / extension / bande originale) dans un seul
 // classement par prix n'a pas de sens : une extension moins chère que le
 // jeu de base ne devrait jamais lui voler le badge "Meilleur plan".
-function renderSection({ items, icon, label, budget, showTypeTag, extraClass = "" }) {
+function renderSection({ items, icon, label, budget, showTypeTag, category = "", extraClass = "" }) {
   if (items.length === 0) return;
   const ranked = rankByPriceAndTrust(items);
   const bestIndex = ranked.findIndex((r) => r.price != null);
@@ -206,7 +303,7 @@ function renderSection({ items, icon, label, budget, showTypeTag, extraClass = "
   resultsEl.appendChild(heading);
 
   ranked.forEach((r, i) => {
-    resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget, showTypeTag }));
+    resultsEl.appendChild(createCard(r, { isBest: i === bestIndex, budget, showTypeTag, category }));
   });
 }
 
@@ -232,6 +329,7 @@ function renderResults(results, { budget, category }) {
       label: `${baseResults.length} résultat(s) trouvé(s) sur le web, triés par prix (le moins cher parmi les boutiques reconnues en premier).`,
       budget,
       showTypeTag: isGames,
+      category,
     });
   }
 
@@ -241,6 +339,7 @@ function renderResults(results, { budget, category }) {
     label: "Extensions & DLC (nécessitent le jeu de base)",
     budget,
     showTypeTag: false,
+    category,
     extraClass: "extras-heading",
   });
 
@@ -250,6 +349,7 @@ function renderResults(results, { budget, category }) {
     label: "Bandes originales & extras (hors du jeu lui-même)",
     budget,
     showTypeTag: false,
+    category,
     extraClass: "extras-heading",
   });
 }
@@ -262,6 +362,8 @@ form.addEventListener("submit", async (e) => {
   const budget = budgetRaw === "" ? null : Number(budgetRaw);
   const tags = Array.from(tagsContainer.querySelectorAll("input:checked")).map((cb) => cb.value);
 
+  viewingFavorites = false;
+  document.getElementById("favorites-toggle")?.classList.remove("active");
   showSkeleton();
 
   const params = new URLSearchParams({ category, keyword, tags: tags.join(","), budget: budget ?? "" });
@@ -280,10 +382,17 @@ form.addEventListener("submit", async (e) => {
       return;
     }
 
+    lastSearch = { results: data.results, budget, category };
     renderResults(data.results, { budget, category });
   } catch (err) {
     showMessage("❌", "Impossible de joindre la recherche. Vérifie ta connexion et réessaie.");
   }
 });
 
+document.getElementById("favorites-toggle")?.addEventListener("click", () => {
+  if (viewingFavorites) exitFavoritesView();
+  else showFavoritesView();
+});
+
 initCategories();
+updateFavoritesCount();

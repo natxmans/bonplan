@@ -158,6 +158,53 @@ body {
   padding: 0 20px;
 }
 
+/* ---------- Favoris ---------- */
+
+.favorites-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 16px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.favorites-btn #favorites-count {
+  font-family: var(--font-mono);
+}
+
+.favorites-btn:hover {
+  border-color: var(--warn);
+  transform: translateY(-1px);
+}
+
+.favorites-btn.active {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+  color: #ffd479;
+}
+
+@media (max-width: 640px) {
+  .favorites-btn {
+    top: 12px;
+    right: 12px;
+    padding: 7px 12px;
+    font-size: 0.78rem;
+  }
+}
+
 /* ---------- Header ---------- */
 
 .site-header {
@@ -669,6 +716,42 @@ select {
   align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fav-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+}
+
+.fav-btn:hover {
+  border-color: var(--warn);
+  color: var(--warn);
+  transform: scale(1.08);
+}
+
+.fav-btn.active {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .product-title {
