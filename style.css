@@ -786,6 +786,33 @@ select {
   color: var(--warn);
 }
 
+.copy-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+}
+
+.copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(1.08);
+}
+
+.copy-btn.active {
+  border-color: var(--accent-2);
+  background: var(--accent-2-soft);
+}
+
 .product-title {
   font-weight: 700;
   font-size: 1.02rem;

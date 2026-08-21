@@ -312,12 +312,31 @@ function createCard(r, { isBest, budget, showTypeTag = false, category = "" }) {
       <div class="product-tags">${escapeHtml(r.displayLink)}${showTypeTag ? (extension ? ' · <span class="type-tag">🧩 Extension / DLC</span>' : ' · <span class="type-tag base">🎮 Jeu de base</span>') : ""}</div>
     </div>
     <div class="card-actions">
+      <button type="button" class="copy-btn" aria-label="Copier le lien">📋</button>
       <button type="button" class="fav-btn${isFavorited(link) ? " active" : ""}" aria-label="${isFavorited(link) ? "Retirer des favoris" : "Ajouter aux favoris"}">${isFavorited(link) ? "★" : "☆"}</button>
       ${isBest ? '<span class="badge best">✓ Meilleur plan</span>' : ""}
       ${overBudget ? '<span class="badge over-budget">Dépasse le budget</span>' : ""}
     </div>
   `;
   head.querySelector(".product-title a").addEventListener("click", (e) => e.stopPropagation());
+
+  const copyBtn = head.querySelector(".copy-btn");
+  copyBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const priceText = r.price != null ? `${r.price.toFixed(2)} ${r.currency || "€"}` : "prix à vérifier";
+    const shareText = `${r.title} — ${priceText} chez ${r.displayLink}\n${link}`;
+    try {
+      await navigator.clipboard.writeText(shareText);
+      copyBtn.textContent = "✅";
+      copyBtn.classList.add("active");
+    } catch {
+      copyBtn.textContent = "❌";
+    }
+    setTimeout(() => {
+      copyBtn.textContent = "📋";
+      copyBtn.classList.remove("active");
+    }, 1500);
+  });
 
   const favBtn = head.querySelector(".fav-btn");
   favBtn.addEventListener("click", (e) => {
