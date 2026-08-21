@@ -345,6 +345,11 @@ function createCard(r, { isBest, budget, showTypeTag = false, category = "" }) {
     favBtn.textContent = added ? "★" : "☆";
     favBtn.classList.toggle("active", added);
     favBtn.setAttribute("aria-label", added ? "Retirer des favoris" : "Ajouter aux favoris");
+    if (added) {
+      const toggleBtn = document.getElementById("favorites-toggle");
+      toggleBtn?.classList.add("pulse");
+      setTimeout(() => toggleBtn?.classList.remove("pulse"), 600);
+    }
     if (!added && viewingFavorites) showFavoritesView();
   });
 
