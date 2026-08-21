@@ -81,6 +81,72 @@ function exitFavoritesView() {
   }
 }
 
+// ---------- Recherches récentes (100% local, aucun appel réseau) ----------
+
+const RECENT_KEY = "bonplan_recent_searches";
+const RECENT_MAX = 5;
+const recentSearchesEl = document.getElementById("recent-searches");
+
+function getRecentSearches() {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addRecentSearch(entry) {
+  if (!entry.keyword && entry.tags.length === 0) return; // rien à retenir
+  const recents = getRecentSearches().filter(
+    (r) => !(r.category === entry.category && r.keyword === entry.keyword && r.tags.join(",") === entry.tags.join(","))
+  );
+  recents.unshift(entry);
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recents.slice(0, RECENT_MAX)));
+  } catch {
+    // stockage indisponible : on ignore silencieusement
+  }
+}
+
+function runSearch(category, keyword, tags, budget) {
+  categorySelect.value = category;
+  renderTags(category);
+  Array.from(tagsContainer.querySelectorAll('input[type="checkbox"]')).forEach((cb) => {
+    if (tags.includes(cb.value)) {
+      cb.checked = true;
+      cb.closest(".tag-option").classList.add("checked");
+    }
+  });
+  document.getElementById("keyword").value = keyword;
+  document.getElementById("budget").value = budget ?? "";
+  document.documentElement.dataset.category = category;
+  form.requestSubmit();
+}
+
+function renderRecentSearches() {
+  if (!recentSearchesEl) return;
+  const recents = getRecentSearches();
+  if (recents.length === 0) {
+    recentSearchesEl.innerHTML = "";
+    return;
+  }
+  const chips = recents
+    .map((r, i) => {
+      const cat = CATEGORIES[r.category];
+      const label = [r.keyword, ...r.tags].filter(Boolean).join(" · ") || cat?.label || r.category;
+      return `<button type="button" class="recent-chip" data-index="${i}">${cat?.icon || "🔎"} ${escapeHtml(label)}</button>`;
+    })
+    .join("");
+  recentSearchesEl.innerHTML = `<span class="recent-label">🕐 Récent :</span>${chips}`;
+  recentSearchesEl.querySelectorAll(".recent-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const r = recents[Number(chip.dataset.index)];
+      runSearch(r.category, r.keyword, r.tags, r.budget);
+    });
+  });
+}
+
 function initCategories() {
   Object.entries(CATEGORIES).forEach(([key, cat]) => {
     const opt = document.createElement("option");
@@ -384,6 +450,8 @@ form.addEventListener("submit", async (e) => {
 
     lastSearch = { results: data.results, budget, category };
     renderResults(data.results, { budget, category });
+    addRecentSearch({ category, keyword, tags, budget });
+    renderRecentSearches();
   } catch (err) {
     showMessage("❌", "Impossible de joindre la recherche. Vérifie ta connexion et réessaie.");
   }
@@ -396,3 +464,4 @@ document.getElementById("favorites-toggle")?.addEventListener("click", () => {
 
 initCategories();
 updateFavoritesCount();
+renderRecentSearches();
