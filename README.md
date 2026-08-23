@@ -48,6 +48,19 @@ connecté à Netlify via GitHub).
 
 ## Limites connues
 
+- ⚠️ **Recherche actuellement non fonctionnelle sur les projets Google Cloud
+  récents.** Constat du 23/08/2026 sur un projet créé le 20/08 : les modèles
+  Gemini 2.x/2.5.x (seuls à avoir un vrai quota gratuit pour l'outil
+  `google_search`) répondent "no longer available to new users", et les
+  modèles Gemini 3.x actuels (non dépréciés) ont un quota de recherche web
+  **nul** pour les comptes gratuits — vérifiable sur
+  [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit)
+  → "Ancrage de recherche" → sélectionner "Gemini 3" → "Aucune donnée
+  disponible". Autrement dit : sur un compte/projet créé récemment, il n'y a
+  actuellement aucune combinaison gratuite qui fonctionne pour cette
+  fonctionnalité. Pistes : activer la facturation sur le projet Google Cloud
+  (l'ancrage de recherche redevient alors disponible même sur Gemini 3.x), ou
+  attendre que Google élargisse l'accès gratuit aux nouveaux comptes.
 - Gemini peut occasionnellement mal interpréter une recherche ou renvoyer
   un format inattendu — le site l'indique clairement plutôt que d'afficher
   des données fausses silencieusement.
