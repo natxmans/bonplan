@@ -65,6 +65,27 @@ function extractJsonArray(text) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+// Filet de sécurité contre une dérive de coût si la facturation est activée
+// côté Google Cloud : borne le nombre d'appels réellement facturables
+// (ceux qui atteignent l'API Gemini) servis par ce conteneur de fonction en
+// une journée. Ce n'est pas une garantie parfaite — Netlify peut redémarrer
+// le conteneur et remettre le compteur à zéro, et un pic de trafic peut
+// répartir les requêtes sur plusieurs conteneurs en parallèle — mais ça
+// borne concrètement le pire cas pour un conteneur qui reste actif, en
+// complément de isAllowedOrigin() ci-dessous. À réviser si ce plafond
+// devient gênant pour un usage légitime.
+const DAILY_GEMINI_CALL_CAP = 50;
+let dailyUsage = { date: "", count: 0 };
+
+function isOverDailyCap() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (dailyUsage.date !== today) {
+    dailyUsage = { date: today, count: 0 };
+  }
+  dailyUsage.count += 1;
+  return dailyUsage.count > DAILY_GEMINI_CALL_CAP;
+}
+
 async function searchGemini(category, keyword, tags) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -83,6 +104,16 @@ async function searchGemini(category, keyword, tags) {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: "", results: [], note: "Ajoute un mot-clé pour lancer la recherche." }),
+    };
+  }
+
+  if (isOverDailyCap()) {
+    return {
+      statusCode: 429,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        error: "Limite quotidienne de recherches atteinte pour ce serveur (protection contre une facture imprévue). Réessaie demain.",
+      }),
     };
   }
 
